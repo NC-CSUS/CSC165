@@ -1,9 +1,10 @@
 /*
+Nick Chace
 Malkylm Wright
 CSC 165-02
 Scott Gordon
 
-Assignment 2 - Dolphin Tour:
+Final Projects - Monster Battles:
 
 Controls for Dolphin:
 Keyboard:
@@ -102,30 +103,36 @@ public class MyGame extends VariableFrameRateGame
 	//GameObject for ground, and terrain
 	private GameObject ground, terrain;
 	//GameObjects for scattered items
-	private GameObject objCube, objSphere, objTorus, objPlane, objDiamond, objLava, objChest, objXLine, objYLine, objZLine, objGhost;
+	private GameObject objCube, objSphere, objTorus, objPlane, objDiamond, objLava, objChest, objXLine, objYLine, objZLine, objGhost, objSpider;
 	//Refridgerator magnets
 	private GameObject objMagnet1, objMagnet2, objMagnet3, objMagnet4;
 	//Testing Player models
 	private GameObject player, player2, player3, player4, player5;
+	//Fully Functional Player Objects
+	private GameObject objPlayer;
 	
 
 	private ObjShape dolS;
 	//Shape for ground and terrain
 	private ObjShape groundS, terrainS;
 	//ObjShapes for scattered items
-	private ObjShape cubeS, sphereS, torusS, planeS, diamondS, lavaS, chestS, axisS, xS, yS, zS, ghostS;
+	private ObjShape cubeS, sphereS, torusS, planeS, diamondS, lavaS, chestS, axisS, xS, yS, zS, ghostS, spiderS;
 	private ObjShape magnetS;
 	//Shape for player model
 	private ObjShape playerS;
+	//Shape for animated Player actions
+	private AnimatedShape animPlayerS;
 
 	private TextureImage doltx;
 	//Texture image for ground, terrain, and terrain height, and testing texture
-	private TextureImage groundTx, terrainTx, hillsTx, grass2Tx;
+	private TextureImage groundTx, terrainTx, hillsTx, grass2Tx, gravelTx;
 	//Texture image for scattered items
 	private TextureImage cubeTx, sphereTx, torusTx, planeTx, diamondTx, lavaTx, chestTx, xTx, yTx, zTx, ghostTx;
 	private TextureImage magnet1Tx, magnet2Tx, magnet3Tx, magnet4Tx;
 	//Texture Image for testing player models
 	private TextureImage playerTx, player2Tx, player3Tx, player4Tx, player5Tx;
+	//Finished Player Textures
+	private TextureImage playerRedTx, playerBlueTx, playerGreenTx, playerCyanTx, playerTanTx;
 	
 	private String serverAddress;
 	private int serverPort;
@@ -177,7 +184,12 @@ public class MyGame extends VariableFrameRateGame
 		diamondS = new ManualDiamond();
 		ghostS = new ImportedModel("dolphinHighPoly.obj");
 		playerS = new ImportedModel("ninja_lowpoly.obj");
+		spiderS = new ImportedModel("spider.obj");
 		terrainS = new TerrainPlane(1000);
+		
+		animPlayerS = new AnimatedShape("dummy.rkm", "dummy.rks");
+		animPlayerS.loadAnimation("RUN", "run.rka");
+		animPlayerS.loadAnimation("PUNCH", "punch.rka");
 	}
 
 	@Override
@@ -201,12 +213,18 @@ public class MyGame extends VariableFrameRateGame
 		diamondTx = new TextureImage("goldTexture.jpg");
 		ghostTx = new TextureImage("redDolphin.jpg");
 		hillsTx = new TextureImage("hills.png");
-		playerTx = new TextureImage("Ninja_uvmap_test.png");
+		playerTx = new TextureImage("Ninja_uvmap_test.png");	//These ones are testing remove later
 		player2Tx = new TextureImage("Ninja_uvmap_test2.png");
 		player3Tx = new TextureImage("Ninja_uvmap_test3.png");
 		player4Tx = new TextureImage("Ninja_uvmap_test4.png");
 		player5Tx = new TextureImage("Ninja_uvmap_test5.png");
 		grass2Tx = new TextureImage("grass2.jpg");
+		playerRedTx = new TextureImage("Ninja_uvmapNEW_RED.png");
+		playerBlueTx = new TextureImage("Ninja_uvmapNEW_BLUE.png");
+		playerGreenTx = new TextureImage("Ninja_uvmapNEW_GREEN.png");
+		playerCyanTx = new TextureImage("Ninja_uvmapNEW_CYAN.png");
+		playerTanTx = new TextureImage("Ninja_uvmapNEW_Tan.png");
+		gravelTx = new TextureImage("100_1450_seamless.JPG"); //https://opengameart.org/content/seamless-textures 
 	}
 
 	@Override
@@ -334,12 +352,14 @@ public class MyGame extends VariableFrameRateGame
 		objDiamond.propagateRotation(false);
 		
 		//Terrain texture and height generation
-		terrain = new GameObject(GameObject.root(), terrainS, grass2Tx);
+		terrain = new GameObject(GameObject.root(), terrainS, gravelTx);
 		initialTranslation = (new Matrix4f()).translation(0f,0f,0f);
 		terrain.setLocalTranslation(initialTranslation);
-		initialScale = (new Matrix4f()).scale(40f, 1f, 40f);
+		initialScale = (new Matrix4f()).scale(100f, 3.5f, 100f);
 		terrain.setLocalScale(initialScale);
 		terrain.setHeightMap(hillsTx);
+		(terrain.getRenderStates()).setTiling(2); //Mirrored Repeat
+		(terrain.getRenderStates()).setTileFactor(10);
 		
 		terrain.getRenderStates().setTiling(1);
 		terrain.getRenderStates().setTileFactor(10);
@@ -374,6 +394,16 @@ public class MyGame extends VariableFrameRateGame
 		initialScale = (new Matrix4f()).scaling(0.9f);
 		player5.setLocalTranslation(initialTranslation);
 		player5.setLocalScale(initialScale);
+
+		objSpider = new GameObject(GameObject.root(), spiderS);
+		initialTranslation = (new Matrix4f()).translation(20, 4, 5);
+		objSpider.setLocalTranslation(initialTranslation);
+		
+		objPlayer = new GameObject(GameObject.root(), animPlayerS, playerRedTx);
+		initialTranslation = (new Matrix4f()).translation(0,4,5);
+		initialScale = (new Matrix4f()).scaling(0.9f);
+		objPlayer.setLocalTranslation(initialTranslation);
+		objPlayer.setLocalScale(initialScale);
 	}
 	
 	/**Gets the single value coordinate to return to the translation function. This increases an offset padding so shapes don't spawn in the middle of the screen */
@@ -401,7 +431,7 @@ public class MyGame extends VariableFrameRateGame
 	public void loadSkyBoxes(){
 		fluffyClouds = (engine.getSceneGraph()).loadCubeMap("fluffyClouds");
 		(engine.getSceneGraph()).setActiveSkyBoxTexture(fluffyClouds);
-		//(engine.getSceneGraph()).setSkyBoxEnabled(true);
+		(engine.getSceneGraph()).setSkyBoxEnabled(true);
 	}
 
 	@Override
@@ -520,6 +550,9 @@ public class MyGame extends VariableFrameRateGame
 		
 		//Collision logic
 		checkCollisionObjects();
+		
+		//Update any animations
+		animPlayerS.updateAnimation();
 
 
 		//Magnet placing
@@ -832,15 +865,17 @@ public class MyGame extends VariableFrameRateGame
 
 
 			case KeyEvent.VK_4: //Keys 4-6 open for commands
-
+				animPlayerS.stopAnimation();
+				animPlayerS.playAnimation("RUN", 0.45f, AnimatedShape.EndType.LOOP, 0);
 				break;
 			
 			case KeyEvent.VK_5:
-
+				animPlayerS.stopAnimation();
+				animPlayerS.playAnimation("PUNCH", 0.3f, AnimatedShape.EndType.LOOP, 0);
 				break;
 				
 			case KeyEvent.VK_6:
-
+				animPlayerS.stopAnimation();
 				break;
 		}
 

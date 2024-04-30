@@ -39,7 +39,8 @@ public class RenderObjectSkyBox
 
 	/** for engine use only. */
 	public void render(GameObject go, int skyboxProgram, Matrix4f pMat, Matrix4f vMat)
-	{	GL4 gl = (GL4) GLContext.getCurrentGL();
+	{	
+		GL4 gl = (GL4) GLContext.getCurrentGL();
 
 		gl.glUseProgram(skyboxProgram);
 
