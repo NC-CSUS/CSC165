@@ -24,7 +24,7 @@ public class GhostManager
 		ObjShape s = game.getGhostShape();
 		TextureImage t = game.getGhostTexture();
 		GhostAvatar newAvatar = new GhostAvatar(id, s, t, position);
-		Matrix4f initialScale = (new Matrix4f()).scaling(0.25f);
+		Matrix4f initialScale = (new Matrix4f()).scaling(1.0f);
 		newAvatar.setLocalScale(initialScale);
 		ghostAvatars.add(newAvatar);
 	}
@@ -59,7 +59,11 @@ public class GhostManager
 	public void updateGhostAvatar(UUID id, Vector3f position)
 	{	GhostAvatar ghostAvatar = findAvatar(id);
 		if (ghostAvatar != null)
-		{	ghostAvatar.setPosition(position);
+		{	
+			//if(ghostAvatar.getPosition().x() == position.x() && ghostAvatar.getPosition().y() == position.y() && ghostAvatar.getPosition().z() == position.z()){
+				//(ghostAvatar.getShape()).playAnimation();
+			//}
+			ghostAvatar.setPosition(position);
 		}
 		else
 		{	System.out.println("tried to update ghost avatar position, but unable to find ghost in list");

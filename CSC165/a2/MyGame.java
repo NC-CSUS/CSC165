@@ -47,6 +47,9 @@ import tage.nodeControllers.InvisibilityController;
 import tage.nodeControllers.RotationController;
 import net.java.games.input.*;
 import net.java.games.input.Component.Identifier.*;
+import tage.audio.*;
+import tage.physics.*;
+import tage.physics.JBullet.*;
 
 import java.lang.Math;
 import java.util.Random;
@@ -103,31 +106,30 @@ public class MyGame extends VariableFrameRateGame
 	//GameObject for ground, and terrain
 	private GameObject ground, terrain;
 	//GameObjects for scattered items
-	private GameObject objCube, objSphere, objTorus, objPlane, objDiamond, objLava, objChest, objXLine, objYLine, objZLine, objGhost, objSpider;
+	private GameObject objCube, objSphere, objTorus, objPlane, objDiamond, objLava, objChest, objXLine, objYLine, objZLine, objGhost, objSpider
+					   objBall, objGoalOne, objGoalTwo;
 	//Refridgerator magnets
 	private GameObject objMagnet1, objMagnet2, objMagnet3, objMagnet4;
-	//Testing Player models
-	private GameObject player, player2, player3, player4, player5;
 	//Fully Functional Player Objects
-	private GameObject objPlayer;
+	private GameObject objPlayer, objDummy, objDummy2;
 	
 
 	private ObjShape dolS;
 	//Shape for ground and terrain
 	private ObjShape groundS, terrainS;
 	//ObjShapes for scattered items
-	private ObjShape cubeS, sphereS, torusS, planeS, diamondS, lavaS, chestS, axisS, xS, yS, zS, ghostS, spiderS;
+	private ObjShape cubeS, sphereS, torusS, planeS, diamondS, lavaS, chestS, axisS, xS, yS, zS, ghostS, spiderS, ballS, goalS;
 	private ObjShape magnetS;
 	//Shape for player model
 	private ObjShape playerS;
 	//Shape for animated Player actions
-	private AnimatedShape animPlayerS;
+	private AnimatedShape animPlayerS, animGhostS;
 
 	private TextureImage doltx;
 	//Texture image for ground, terrain, and terrain height, and testing texture
 	private TextureImage groundTx, terrainTx, hillsTx, grass2Tx, gravelTx;
 	//Texture image for scattered items
-	private TextureImage cubeTx, sphereTx, torusTx, planeTx, diamondTx, lavaTx, chestTx, xTx, yTx, zTx, ghostTx;
+	private TextureImage cubeTx, sphereTx, torusTx, planeTx, diamondTx, lavaTx, chestTx, xTx, yTx, zTx, ghostTx, ballTx, GoalTx;
 	private TextureImage magnet1Tx, magnet2Tx, magnet3Tx, magnet4Tx;
 	//Texture Image for testing player models
 	private TextureImage playerTx, player2Tx, player3Tx, player4Tx, player5Tx;
@@ -146,6 +148,16 @@ public class MyGame extends VariableFrameRateGame
 	
 	//Terrain following
 	private Vector3f lastLocation;
+	
+	//Audio
+	private IAudioManager audioManager;
+	private Sound whistleSound, runSound, punchSound, spiderSound; 
+	
+	//Physics
+	private PhysicsEngine physicsEngine;
+	private PhysicsObject planePhys, borderPhys, playerCapsulePhys, ghostCapsulePhys,
+			northWallPhys, southWallPhys, EastWallPhys, westWallPhys, goalOnePhys, goalTwoPhys, ballPhys;
+	private boolean runningPhysics = false;
 
 	public MyGame(String serverAddress, int serverPort, String protocol) {
 		super(); 
@@ -186,10 +198,16 @@ public class MyGame extends VariableFrameRateGame
 		playerS = new ImportedModel("ninja_lowpoly.obj");
 		spiderS = new ImportedModel("spider.obj");
 		terrainS = new TerrainPlane(1000);
+		ballS = new ImportedModel("soccerball.obj");
+		goalS = new ImportedModel("goal.obj");
 		
 		animPlayerS = new AnimatedShape("dummy.rkm", "dummy.rks");
 		animPlayerS.loadAnimation("RUN", "run.rka");
 		animPlayerS.loadAnimation("PUNCH", "punch.rka");
+		
+		animGhostS = new AnimatedShape("dummy.rkm", "dummy.rks");
+		animGhostS.loadAnimation("RUN", "run.rka");
+		animGhostS.loadAnimation("PUNCH", "punch.rka");
 	}
 
 	@Override
@@ -213,11 +231,6 @@ public class MyGame extends VariableFrameRateGame
 		diamondTx = new TextureImage("goldTexture.jpg");
 		ghostTx = new TextureImage("redDolphin.jpg");
 		hillsTx = new TextureImage("hills.png");
-		playerTx = new TextureImage("Ninja_uvmap_test.png");	//These ones are testing remove later
-		player2Tx = new TextureImage("Ninja_uvmap_test2.png");
-		player3Tx = new TextureImage("Ninja_uvmap_test3.png");
-		player4Tx = new TextureImage("Ninja_uvmap_test4.png");
-		player5Tx = new TextureImage("Ninja_uvmap_test5.png");
 		grass2Tx = new TextureImage("grass2.jpg");
 		playerRedTx = new TextureImage("Ninja_uvmapNEW_RED.png");
 		playerBlueTx = new TextureImage("Ninja_uvmapNEW_BLUE.png");
@@ -225,6 +238,8 @@ public class MyGame extends VariableFrameRateGame
 		playerCyanTx = new TextureImage("Ninja_uvmapNEW_CYAN.png");
 		playerTanTx = new TextureImage("Ninja_uvmapNEW_Tan.png");
 		gravelTx = new TextureImage("100_1450_seamless.JPG"); //https://opengameart.org/content/seamless-textures 
+		ballTx = new TextureImage("ball.png");
+		goalTx = new TextureImage("Goal.png");
 	}
 
 	@Override
@@ -363,38 +378,8 @@ public class MyGame extends VariableFrameRateGame
 		
 		terrain.getRenderStates().setTiling(1);
 		terrain.getRenderStates().setTileFactor(10);
-		
-		//Testing Player avatars
-		player = new GameObject(GameObject.root(), playerS, playerTx);
-		initialTranslation = (new Matrix4f()).translation(5,4,5);
-		initialScale = (new Matrix4f()).scaling(0.9f);
-		player.setLocalTranslation(initialTranslation);
-		player.setLocalScale(initialScale);
-		
-		player2 = new GameObject(GameObject.root(), playerS, player2Tx);
-		initialTranslation = (new Matrix4f()).translation(8,4,5);
-		initialScale = (new Matrix4f()).scaling(0.9f);
-		player2.setLocalTranslation(initialTranslation);
-		player2.setLocalScale(initialScale);
-		
-		player3 = new GameObject(GameObject.root(), playerS, player3Tx);
-		initialTranslation = (new Matrix4f()).translation(11,4,5);
-		initialScale = (new Matrix4f()).scaling(0.9f);
-		player3.setLocalTranslation(initialTranslation);
-		player3.setLocalScale(initialScale);
-		
-		player4 = new GameObject(GameObject.root(), playerS, player4Tx);
-		initialTranslation = (new Matrix4f()).translation(14,4,5);
-		initialScale = (new Matrix4f()).scaling(0.9f);
-		player4.setLocalTranslation(initialTranslation);
-		player4.setLocalScale(initialScale);
-		
-		player5 = new GameObject(GameObject.root(), playerS, player5Tx);
-		initialTranslation = (new Matrix4f()).translation(17,4,5);
-		initialScale = (new Matrix4f()).scaling(0.9f);
-		player5.setLocalTranslation(initialTranslation);
-		player5.setLocalScale(initialScale);
 
+		//NPC & PC Game Objects
 		objSpider = new GameObject(GameObject.root(), spiderS);
 		initialTranslation = (new Matrix4f()).translation(20, 4, 5);
 		objSpider.setLocalTranslation(initialTranslation);
@@ -404,6 +389,59 @@ public class MyGame extends VariableFrameRateGame
 		initialScale = (new Matrix4f()).scaling(0.9f);
 		objPlayer.setLocalTranslation(initialTranslation);
 		objPlayer.setLocalScale(initialScale);
+		
+		//Goals and Soccerball for Physics Object
+		objGoalOne = new GameObject(GameObject.root(), goalS, goalTx);
+		initialTranslation = (new Matrix4f()).translation(0,2,-5);
+		initialScale = (new Matrix4f()).scaling(1.0f);
+		objPlayer.setLocalTranslation(initialTranslation);
+		objPlayer.setLocalScale(initialScale);
+		
+		objGoalTwo = new GameObject(GameObject.root(), goalS, goalTx);
+		initialTranslation = (new Matrix4f()).translation(-4,2,-5);
+		initialScale = (new Matrix4f()).scaling(1.0f);
+		objPlayer.setLocalTranslation(initialTranslation);
+		objPlayer.setLocalScale(initialScale);
+		
+		objBall = new GameObject(GameObject.root(), ballS, ballTx);
+		initialTranslation = (new Matrix4f()).translation(0,2,5);
+		initialScale = (new Matrix4f()).scaling(1.0f);
+		objPlayer.setLocalTranslation(initialTranslation);
+		objPlayer.setLocalScale(initialScale);
+	}
+	
+	@Override
+	/**Initialize sounds */
+	public void loadSounds(){
+		AudioResource whistle_resource, run_resource, punch_resource, spider_resource;
+		audioManager = engine.getAudioManager();
+		
+		whistle_resource = audioManager.createAudioResource("assets/sounds/whistle.wav", AudioResourceType.AUDIO_SAMPLE); //I made
+		run_resource = audioManager.createAudioResource("assets/sounds/run.wav", AudioResourceType.AUDIO_SAMPLE); //https://opengameart.org/content/fantozzis-footsteps-grasssand-stone 
+		punch_resource = audioManager.createAudioResource("assets/sounds/punch.wav", AudioResourceType.AUDIO_SAMPLE); https://opengameart.org/content/hit-sound-effects 
+		spider_resource = audioManager.createAudioResource("assets/sounds/spider.wav", AudioResourceType.AUDIO_SAMPLE); //I made
+		
+		whistleSound = new Sound(whistle_resource, SoundType.SOUND_EFFECT, 100, true);
+		runSound = new Sound(run_resource, SoundType.SOUND_EFFECT, 100, true);
+		punchSound = new Sound(punch_resource, SoundType.SOUND_EFFECT, 100, true);
+		spiderSound = new Sound(spider_resource, SoundType.SOUND_EFFECT, 100, true);
+		whistleSound.initialize(audioManager);
+		runSound.initialize(audioManager);
+		punchSound.initialize(audioManager);
+		spiderSound.initialize(audioManager);
+		
+		whistleSound.setMaxDistance(15.0f);
+		whistleSound.setMinDistance(0.1f);
+		whistleSound.setRollOff(5.0f);
+		runSound.setMaxDistance(5.0f);
+		runSound.setMinDistance(0.1f);
+		runSound.setRollOff(4.0f);
+		punchSound.setMaxDistance(5.0f);
+		punchSound.setMinDistance(0.1f);
+		punchSound.setRollOff(4.0f);
+		spiderSound.setMaxDistance(5.0f);
+		spiderSound.setMinDistance(0.1f);
+		spiderSound.setRollOff(4.0f);
 	}
 	
 	/**Gets the single value coordinate to return to the translation function. This increases an offset padding so shapes don't spawn in the middle of the screen */
@@ -415,6 +453,13 @@ public class MyGame extends VariableFrameRateGame
 			x *= -1;
 		}
 		return x;
+	}
+	
+	/**Passes location and orientation of the camera and avatar to the audio manager to create 3D sound */
+	public void setEarParameters(){
+		Camera camera = (engine.getRenderSystem()).getViewport("PRIMARY").getCamera();
+		audioManager.getEar().setLocation(objPlayer.getWorldLocation());
+		audioManager.getEar().setOrientation(camera.getN(), new Vector3f(0.0f, 1.0f, 0.0f));
 	}
 
 	@Override
@@ -444,7 +489,7 @@ public class MyGame extends VariableFrameRateGame
 
 		// ------------- Input Section -------------------
 		im = engine.getInputManager();
-		lastLocation = dol.getWorldLocation(); //Terrain following check
+		lastLocation = objPlayer.getWorldLocation(); //Terrain following check
 
 
 		// ------------- positioning the camera -------------
@@ -453,7 +498,7 @@ public class MyGame extends VariableFrameRateGame
 		// ------------- more camera stuff -------------
 		String gpName = im.getFirstGamepadName();
 		
-		orbitController = new CameraOrbit3D(camera, dol, gpName, engine);
+		orbitController = new CameraOrbit3D(camera, objPlayer, gpName, engine);
 		sCamController = new CameraController(secondaryCam, engine);
 
 
@@ -483,6 +528,58 @@ public class MyGame extends VariableFrameRateGame
 
 		setupNetworking();
 		
+		// ---------------- Sound Section --------------------
+		whistleSound.setLocation(objPlayer.getWorldLocation());
+		//Set run and punch sounds to player avatar
+		setEarParameters();
+		//whistleSound.play();
+		
+		//------------------Physics Section-------------------------
+		float[] gravity = {0f, -5f, 0f};
+		physicsEngine = (engine.getSceneGraph()).getPhysicsEngine();
+		physicsEngine.setGravity(gravity);
+
+		float mass = 1.0f;
+		float up[ ] = {0,1,0};
+		float radius = 0.75f;
+		float height = 2.0f;
+		double[ ] tempTransform;
+		
+		//Ball
+		Matrix4f translation = new Matrix4f(objBall.getLocalTranslation());
+		tempTransform = toDoubleArray(translation.get(vals));
+		caps1P = (engine.getSceneGraph()).addPhysicsCapsuleX(
+		mass, tempTransform, radius, height);
+		caps1P.setBounciness(0.8f);
+		dol1.setPhysicsObject(caps1P);
+		
+		//Goal One
+		translation = new Matrix4f(dol2.getLocalTranslation());
+		tempTransform = toDoubleArray(translation.get(vals));
+		caps2P = (engine.getSceneGraph()).addPhysicsCapsuleX(
+		mass, tempTransform, radius, height);
+		caps2P.setBounciness(0.8f);
+		dol2.setPhysicsObject(caps2P);
+		
+		//Goal Two
+		translation = new Matrix4f(plane.getLocalTranslation());
+		tempTransform = toDoubleArray(translation.get(vals));
+		planeP = (engine.getSceneGraph()).addPHysicsStaticPlane(
+		tempTransform, up, 0.0f);
+		planeP.setBounciness(1.0f);
+		plane.setPhysicsObject(planeP);
+		engine.enableGraphicsWorldRender();
+		engine.enablePhysicsWorldRender();
+		
+		//Player
+		translation = new Matrix4f(objPlayer.getLocalTranslation());
+		tempTransform = toDoubleArray(translation.get(vals));
+		playerCapsulePhys = (engine.getSceneGraph()).addPHysicsStaticPlane(
+		tempTransform, up, 0.0f);
+		playerCapsulePhys.setBounciness(1.0f);
+		plane.setPhysicsObject(playerCapsulePhys);
+		engine.enableGraphicsWorldRender();
+		engine.enablePhysicsWorldRender();
 	}
 
 
@@ -531,12 +628,12 @@ public class MyGame extends VariableFrameRateGame
 		if(!touchingLava)
 			im.update((float)elapsTime);
 		
-		loc = dol.getWorldLocation();
+		//Terrain Following
+		loc = objPlayer.getWorldLocation();
 		float height = terrain.getHeight(loc.x(), loc.z());
-		dol.setLocalLocation(new Vector3f(loc.x(), height, loc.z()));
-		
+		objPlayer.setLocalLocation(new Vector3f(loc.x(), height + 4, loc.z()));
 
-		loc = dol.getWorldLocation();
+		loc = objPlayer.getWorldLocation();
 
 		//Dolphins Diamond
 		
@@ -553,7 +650,34 @@ public class MyGame extends VariableFrameRateGame
 		
 		//Update any animations
 		animPlayerS.updateAnimation();
-
+		
+		//Sound
+		whistleSound.setLocation(objPlayer.getWorldLocation());
+		//Update run and punch to player location
+		setEarParameters();
+		
+		//Update Physics
+		if(runningPhysics){
+			AxisAngle4f aa = new AxisAngle4f();
+			Matrix4f mat = new Matrix4f();
+			Matrix4f mat2 = new Matrix4f().identity();
+			Matrix4f mat3 = new Matrix4f().identity();
+			checkForCollisions();
+			physicsEngine.update((float)elapsTime);
+			
+			for (GameObject go:engine.getSceneGraph().getGameObjects()){ 
+				if (go.getPhysicsObject() != null){
+					mat.set(toFloatArray(go.getPhysicsObject().getTransform()));
+					mat2.set(3,0,mat.m30());
+					mat2.set(3,1,mat.m31());
+					mat2.set(3,2,mat.m32());
+					go.setLocalTranslation(mat2);
+					mat.getRotation(aa);
+					mat3.rotation(aa);
+					go.setLocalRotation(mat3);
+				} 
+			} 
+		}
 
 		//Magnet placing
 		if(visitedObj1){
@@ -681,7 +805,7 @@ public class MyGame extends VariableFrameRateGame
 	/**Gets distance between dolphin and camera */
 	public float getDistDolCam(){
 		Camera cam = (engine.getRenderSystem().getViewport("MAIN").getCamera()); //Sets up camera object
-		return (dol.getWorldLocation()).distance(cam.getLocation()); 		
+		return (objPlayer.getWorldLocation()).distance(cam.getLocation()); 		
 	}
 
 	
@@ -724,7 +848,7 @@ public class MyGame extends VariableFrameRateGame
 
 	/**Returns game avatar */
 	public GameObject getAvatar(){
-		return dol;
+		return objPlayer;
 	}
 
 	/**Returns engines elapsed time */
@@ -797,16 +921,17 @@ public class MyGame extends VariableFrameRateGame
 			case KeyEvent.VK_2: //Move dolphin forward
 				//dol.getRenderStates().setWireframe(true);
 		
-				fwd = dol.getWorldForwardVector(); //Sets fwd to the world forward vector
-				loc = dol.getWorldLocation(); //Sets loc to current dolphin location
-				newLocation = loc.add(fwd.mul((float)(timePassed * 12f))); //Sets new location to along the forward vector * .02 ahead
+				fwd = objPlayer.getWorldForwardVector(); //Sets fwd to the world forward vector
+				loc = objPlayer.getWorldLocation(); //Sets loc to current dolphin location
+				newLocation = loc.add(fwd.mul((float)(timePassed * 36f))); //Sets new location to along the forward vector * .02 ahead //Was 12f
 				testLoc = (new Vector3f(newLocation.x(), 0, newLocation.z()));
 				//System.out.println(newLocation.y());
 				
-				dol.setLocalLocation(newLocation);	//Actually sets dolphin location to new location
-						protClient.sendMoveMessage(dol.getWorldLocation());
+				objPlayer.setLocalLocation(newLocation);	//Actually sets dolphin location to new location
+						protClient.sendMoveMessage(objPlayer.getWorldLocation());
 				
-				
+				//animPlayerS.stopAnimation();
+				animPlayerS.playAnimation("RUN", 0.45f, AnimatedShape.EndType.LOOP, 0);
 				
 				break;
 
@@ -814,36 +939,36 @@ public class MyGame extends VariableFrameRateGame
 			case KeyEvent.VK_3: //Move dolphin backward
 				//dol.getRenderStates().setWireframe(false);
 				
-				fwd = dol.getWorldForwardVector(); //Similar to backward moving
-				loc = dol.getWorldLocation();
+				fwd = objPlayer.getWorldForwardVector(); //Similar to backward moving
+				loc = objPlayer.getWorldLocation();
 				newLocation = loc.add(fwd.mul(-(float)(timePassed * 12f)));
 				
-				dol.setLocalLocation(newLocation);	//Actually sets dolphin location to new location
-				protClient.sendMoveMessage(dol.getWorldLocation());
+				objPlayer.setLocalLocation(newLocation);	//Actually sets dolphin location to new location
+				protClient.sendMoveMessage(objPlayer.getWorldLocation());
 
 				break;
 				
 			// Yaw command
 			case KeyEvent.VK_A:
 				if(!touchingLava)
-					dol.yaw((float)(timePassed * 50f));		
+					objPlayer.yaw((float)(timePassed * 150f));	//was 50	
 				break;
 
 			case KeyEvent.VK_D:
 				if(!touchingLava)
-					dol.yaw(-(float)(timePassed * 50f));
+					objPlayer.yaw(-(float)(timePassed * 150f));	//was 50
 				break;
 
 			// Pitch command
 			case KeyEvent.VK_UP:
 				if(!touchingLava)
-					dol.pitch((float)(timePassed * 50f));
+					objPlayer.pitch((float)(timePassed * 50f));
 				
 				break;
 				
 			case KeyEvent.VK_DOWN:
 				if(!touchingLava)				
-					dol.pitch(-(float)(timePassed * 50f));
+					objPlayer.pitch(-(float)(timePassed * 50f));
 				
 				break;
 
@@ -871,19 +996,39 @@ public class MyGame extends VariableFrameRateGame
 			
 			case KeyEvent.VK_5:
 				animPlayerS.stopAnimation();
-				animPlayerS.playAnimation("PUNCH", 0.3f, AnimatedShape.EndType.LOOP, 0);
+				animPlayerS.playAnimation("PUNCH", 0.3f, AnimatedShape.EndType.STOP, 0);
+				
 				break;
 				
 			case KeyEvent.VK_6:
 				animPlayerS.stopAnimation();
 				break;
+			case KeyEvent.VK_7:
+				runningPhysics = !runningPhysics;
+				System.out.print("Toggle Physics: ");
+				if(runningPhysics){
+					System.out.println("ON");
+				} else {
+					System.out.println("OFF");
+				}
+				break;
 		}
 
 		super.keyPressed(e);
 	}
+	
+	@Override
+	/** Need Key Release to stop playing animations */
+	public void keyReleased(KeyEvent e){
+		switch (e.getKeyCode()){
+			case KeyEvent.VK_W:
+				animPlayerS.stopAnimation();
+				break;
+		}
+	}
 
-	public ObjShape getGhostShape() { return ghostS; }
-	public TextureImage getGhostTexture() { return ghostTx; }
+	public ObjShape getGhostShape() { return animGhostS; }
+	public TextureImage getGhostTexture() { return playerBlueTx; }
 	public GhostManager getGhostManager() { return gm; }
 	public Engine getEngine() { return engine; }
 
@@ -916,7 +1061,7 @@ public class MyGame extends VariableFrameRateGame
 			protClient.processPackets();
 	}
 
-	public Vector3f getPlayerPosition() { return dol.getWorldLocation(); }
+	public Vector3f getPlayerPosition() { return objPlayer.getWorldLocation(); }
 
 	public void setIsConnected(boolean value) { this.isClientConnected = value; }
 	
@@ -929,6 +1074,51 @@ public class MyGame extends VariableFrameRateGame
 		}
 	}
 
-
+	//------------------Utility Functions for Physics --------------------------------//
+	private float[] toFloatArray(double[] arr){ 
+		if (arr == null) return null;
+		int n = arr.length;
+		float[] ret = new float[n];
+		for (int i = 0; i < n; i++){ 
+			ret[i] = (float)arr[i];
+		}
+		return ret;
+	}
+	
+	private double[] toDoubleArray(float[] arr){ 
+		if (arr == null) return null;
+		int n = arr.length;
+		double[] ret = new double[n];
+		for (int i = 0; i < n; i++){ 
+			ret[i] = (double)arr[i];
+		}
+		return ret;
+	}
+	
+	private void checkForCollisions(){ 
+		com.bulletphysics.dynamics.DynamicsWorld dynamicsWorld;
+		com.bulletphysics.collision.broadphase.Dispatcher dispatcher;
+		com.bulletphysics.collision.narrowphase.PersistentManifold manifold;
+		com.bulletphysics.dynamics.RigidBody object1, object2;
+		com.bulletphysics.collision.narrowphase.ManifoldPoint contactPoint;
+	
+		dynamicsWorld = ((JBulletPhysicsEngine)physicsEngine).getDynamicsWorld();
+		dispatcher = dynamicsWorld.getDispatcher();
+		int manifoldCount = dispatcher.getNumManifolds();
+		for (int i=0; i<manifoldCount; i++){ 
+			manifold = dispatcher.getManifoldByIndexInternal(i);
+			object1 = (com.bulletphysics.dynamics.RigidBody)manifold.getBody0();
+			object2 = (com.bulletphysics.dynamics.RigidBody)manifold.getBody1();
+			JBulletPhysicsObject obj1 = JBulletPhysicsObject.getJBulletPhysicsObject(object1);
+			JBulletPhysicsObject obj2 = JBulletPhysicsObject.getJBulletPhysicsObject(object2);
+			for (int j = 0; j < manifold.getNumContacts(); j++){ 
+				contactPoint = manifold.getContactPoint(j);
+				if (contactPoint.getDistance() < 0.0f){ 
+					System.out.println("---- hit between " + obj1 + " and " + obj2);
+					break;
+				} 
+			} 
+		} 
+	}
 
 }

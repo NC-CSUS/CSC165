@@ -21,6 +21,12 @@ public class GhostAvatar extends GameObject
 		setPosition(p);
 	}
 	
+	public GhostAvatar(UUID id, AnimatedShape s, TextureImage t, Vector3f p) 
+	{	super(GameObject.root(), s, t);
+		uuid = id;
+		setPosition(p);
+	}
+	
 	public UUID getID() { return uuid; }
 	public void setPosition(Vector3f m) { setLocalLocation(m); }
 	public Vector3f getPosition() { return getWorldLocation(); }

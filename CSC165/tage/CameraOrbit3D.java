@@ -53,6 +53,12 @@ public class CameraOrbit3D{
 		im.associateActionWithAllGamepads(net.java.games.input.Component.Identifier.Axis.Y, orbitEl, InputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		im.associateActionWithAllGamepads(net.java.games.input.Component.Identifier.Axis.RZ, orbitRa, InputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
         im.associateActionWithAllGamepads(net.java.games.input.Component.Identifier.Axis.Z, orbitAz, InputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+	
+		//Adding forward motion to the player avatar here and chaning it so left stick "Y" is forward
+		//Ps4 Controller
+		//X & Y = Left Stick (As you expect) 
+		//Z is Horizontal Right stick, RZ is Vertical Right Stick
+		//RX is Left Trigger (L2 / LT), RY is Right Trigger (R2 / RT)
 	}
 
 	/**Updates the camera position */ 

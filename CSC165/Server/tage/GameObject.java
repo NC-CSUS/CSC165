@@ -171,6 +171,10 @@ public class GameObject
 	/** returns a reference to the RenderStates associated with this GameObject */
 	public RenderStates getRenderStates() { return renderStates; }
 
+	/*public GameObject getAvatar(){
+		return this;
+	}*/
+
 	/** returns a boolean value that is true if this GameObject is a terrain plane */
 	public boolean isTerrain() { return isTerrain; }
 
@@ -302,7 +306,7 @@ public class GameObject
 	public Matrix4f getWorldScale() { return new Matrix4f(worldScale); }
 
 	/** returns a forward-facing Vector3f based on the local rotation matrix */
-	public Vector3f getLocalForwardVector() { return new Vector3f(localRotation.getColumn(2, v)); }
+	public Vector3f getLocalForwardVector() { return new Vector3f(localRotation.getColumn(2, v)); } 
 
 	/** returns a upward-facing Vector3f based on the local rotation matrix */
 	public Vector3f getLocalUpVector() { return new Vector3f(localRotation.getColumn(1, v)); }
@@ -399,4 +403,26 @@ public class GameObject
 			Engine.getEngine().getRenderSystem().addTexture((TextureImage)this);
 		}
 	}
+
+	// ------------------- Methods for pitch and yaw -------------
+
+	/**Yaw command implemented in GameObject */
+	public void yaw(float amount){
+		Vector3f up = this.getWorldUpVector();
+		Matrix4f yRot = (new Matrix4f()).rotation((float)(org.joml.Math.toRadians(amount)), 0, 1, 0);
+		Matrix4f currRoto = this.getLocalRotation();
+		Matrix4f newRoto = yRot.mul(currRoto);
+		this.setLocalRotation(newRoto);
+	}
+
+	/**Pitch command implemented in GameObject */
+	public void pitch(float amount){
+		Vector3f right = this.getLocalRightVector();
+		Matrix4f yRot = (new Matrix4f()).rotation((float)(org.joml.Math.toRadians(amount)), right);
+		Matrix4f currRoto = this.getLocalRotation();
+		Matrix4f newRoto = yRot.mul(currRoto);
+		this.setLocalRotation(newRoto);
+	}
+
+
 }
